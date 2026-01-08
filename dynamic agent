@@ -1,0 +1,166 @@
+
+!pip install gradio web3 eth-account python-dotenv py-solc-x -q
+
+import gradio as gr
+from web3 import Web3
+from solcx import compile_source, install_solc
+from datetime import datetime
+import pandas as pd
+
+
+install_solc('0.8.0')
+
+
+contract_source = '''
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract AidDistribution {
+    address public admin;
+    
+    struct Vendor {
+        string name;
+        string location;
+        bool isActive;
+        uint256 registrationDate;
+    }
+    
+    struct AidPackage {
+        uint256 id;
+        address vendor;
+        address beneficiary;
+        string itemDescription;
+        uint256 quantity;
+        uint256 timestamp;
+        bool delivered;
+    }
+    
+    mapping(address => Vendor) public vendors;
+    mapping(uint256 => AidPackage) public aidPackages;
+    address[] public vendorList;
+    uint256 public packageCounter;
+    
+    event VendorRegistered(address indexed vendorAddress, string name);
+    event AidDelivered(uint256 indexed packageId, address indexed vendor, address indexed beneficiary);
+    
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can perform this action");
+        _;
+    }
+    
+    modifier onlyVendor() {
+        require(vendors[msg.sender].isActive, "Only active vendors can perform this action");
+        _;
+    }
+    
+    constructor() {
+        admin = msg.sender;
+    }
+    
+    function registerVendor(address _vendorAddress, string memory _name, string memory _location) public onlyAdmin {
+        require(!vendors[_vendorAddress].isActive, "Vendor already registered");
+        
+        vendors[_vendorAddress] = Vendor({
+            name: _name,
+            location: _location,
+            isActive: true,
+            registrationDate: block.timestamp
+        });
+        
+        vendorList.push(_vendorAddress);
+        emit VendorRegistered(_vendorAddress, _name);
+    }
+    
+    function deliverAid(address _beneficiary, string memory _itemDescription, uint256 _quantity) public onlyVendor {
+        packageCounter++;
+        
+        aidPackages[packageCounter] = AidPackage({
+            id: packageCounter,
+            vendor: msg.sender,
+            beneficiary: _beneficiary,
+            itemDescription: _itemDescription,
+            quantity: _quantity,
+            timestamp: block.timestamp,
+            delivered: true
+        });
+        
+        emit AidDelivered(packageCounter, msg.sender, _beneficiary);
+    }
+    
+    function getVendorCount() public view returns (uint256) {
+        return vendorList.length;
+    }
+    
+    function getVendor(address _vendorAddress) public view returns (string memory, string memory, bool, uint256) {
+        Vendor memory v = vendors[_vendorAddress];
+        return (v.name, v.location, v.isActive, v.registrationDate);
+    }
+    
+    function getAidPackage(uint256 _packageId) public view returns (address, address, string memory, uint256, uint256, bool) {
+        AidPackage memory pkg = aidPackages[_packageId];
+        return (pkg.vendor, pkg.beneficiary, pkg.itemDescription, pkg.quantity, pkg.timestamp, pkg.delivered);
+    }
+}
+'''
+
+
+w3 = Web3(Web3.EthereumTesterProvider())
+admin_account = w3.eth.accounts[0]
+
+
+compiled_sol = compile_source(contract_source, output_values=['abi', 'bin'])
+contract_interface = compiled_sol['<stdin>:AidDistribution']
+abi = contract_interface['abi']
+bytecode = contract_interface['bin']
+
+Contract = w3.eth.contract(abi=abi, bytecode=bytecode)
+tx_hash = Contract.constructor().transact({'from': admin_account})
+tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+contract_address = tx_receipt.contractAddress
+contract = w3.eth.contract(address=contract_address, abi=abi)
+
+
+def register_vendor(vendor_address, vendor_name, vendor_location):
+    tx_hash = contract.functions.registerVendor(
+        vendor_address, vendor_name, vendor_location
+    ).transact({'from': admin_account})
+    return f"Vendor {vendor_name} registered! Tx: {tx_hash.hex()}"
+
+def deliver_aid(vendor_address, beneficiary_address, item_description, quantity):
+    tx_hash = contract.functions.deliverAid(
+        beneficiary_address, item_description, int(quantity)
+    ).transact({'from': vendor_address})
+    return f"Aid delivered! Tx: {tx_hash.hex()}"
+
+def transparency_report():
+    vendor_count = contract.functions.getVendorCount().call()
+    package_count = contract.functions.packageCounter().call()
+    return f"Total Vendors: {vendor_count}, Total Packages: {package_count}"
+
+
+with gr.Blocks() as demo:
+    gr.Markdown(" Blockchain-Based Aid Distribution System")
+    
+    with gr.Tab("Register Vendor"):
+        v_addr = gr.Textbox(label="Vendor Address", value=w3.eth.accounts[1])
+        v_name = gr.Textbox(label="Vendor Name")
+        v_loc = gr.Textbox(label="Vendor Location")
+        v_btn = gr.Button("Register Vendor")
+        v_out = gr.Textbox(label="Result")
+        v_btn.click(register_vendor, inputs=[v_addr, v_name, v_loc], outputs=v_out)
+    
+    with gr.Tab("Deliver Aid"):
+        d_vendor = gr.Textbox(label="Vendor Address", value=w3.eth.accounts[1])
+        d_beneficiary = gr.Textbox(label="Beneficiary Address", value=w3.eth.accounts[4])
+        d_item = gr.Textbox(label="Item Description")
+        d_qty = gr.Number(label="Quantity")
+        d_btn = gr.Button("Deliver Aid")
+        d_out = gr.Textbox(label="Result")
+        d_btn.click(deliver_aid, inputs=[d_vendor, d_beneficiary, d_item, d_qty], outputs=d_out)
+    
+    with gr.Tab("Transparency Report"):
+        r_btn = gr.Button("Generate Report")
+        r_out = gr.Textbox(label="Report")
+        r_btn.click(transparency_report, outputs=r_out)
+
+demo.launch(share=True)
