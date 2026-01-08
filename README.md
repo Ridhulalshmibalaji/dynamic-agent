@@ -36,12 +36,14 @@ Local vendors gain fair access, building trust and resilience.
 ---
 
  System Architecture
-- **Frontend:** React/Gradio dashboards for NGOs, vendors, auditors.  
-- **Backend:** Node.js + Express orchestrator.  
-- **Database:** MongoDB Atlas (Cluster0, project `book`).  
-- **Blockchain Layer:** Smart contracts (Ethereum/Hyperledger).  
-- **ML Models:** Disaster detection, vendor ranking, anomaly detection.  
-- **APIs:** Disaster feeds, logistics providers, payment gateways.  
+Python Backend in Colab
+Used Web3.py + solcx to:
+
+Compile the contract.
+
+Deploy it.
+
+Interact with it (register vendors, deliver aid, query records).
 
 ---
 
