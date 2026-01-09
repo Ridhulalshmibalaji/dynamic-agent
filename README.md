@@ -1,3 +1,20 @@
+# Dynamic Agent Repository
+
+## Demo Video
+[Watch the demo video](https://youtu.be/-pteIsgIh0c?si=MG_CIqNRwCslpanf see)
+
+## Presentation
+[View the PPT](https://1drv.ms/p/c/ec78735a97ed2033/IQC0aFTzilT3S72DjzUlbKkfARvYdGxpnZC5mmyCLGYdk9w?e=Hr6LW4)
+
+
+Trigger‑based activation:** Disaster alerts automatically launch procurement workflows.  
+- **Smart contracts:** Blockchain‑secured agreements with guaranteed payments.  
+- **Instant vendor onboarding:** Micro‑vendors join without paperwork delays.  
+- **Transparent transactions:** Every step logged to prevent corruption.  
+- **Scalable deployment:** Works across floods, earthquakes, pandemics, and more.  
+
+
+
 # dynamic-agent
 Triggered by disaster alerts, it connects local micro‑vendors to relief agencies, ensuring faster delivery of food, water, medicine, and transport with guaranteed payments and auditable records
 # Dynamic Procurement Agent
